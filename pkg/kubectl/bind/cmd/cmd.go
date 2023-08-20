@@ -82,6 +82,10 @@ func New(streams genericclioptions.IOStreams) (*cobra.Command, error) {
 				return err
 			}
 
+			if opts.Unattended {
+				authURLCh := make(chan string, 1)
+				return opts.Run(cmd.Context(), authURLCh)
+			}
 			return opts.Run(cmd.Context(), nil)
 		},
 	}

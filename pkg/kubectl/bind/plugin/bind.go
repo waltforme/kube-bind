@@ -67,8 +67,10 @@ type BindOptions struct {
 	// The konnector image to use and override default konnector image
 	KonnectorImageOverride string
 
-	// Use automations to replace a human's interactive authentication and resouce selection.
+	// Use automations to replace a human's interactive authentication and resource selection.
 	Unattended bool
+	// The resource (e.g., "mangodbs") to be selected during the automated resource selection, if "unattended" is true.
+	Resource string
 
 	// Runner is runs the command. It can be replaced in tests.
 	Runner func(cmd *exec.Cmd) error
@@ -103,6 +105,7 @@ func (b *BindOptions) AddCmdFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&b.DryRun, "dry-run", "d", b.DryRun, "If true, only print the requests that would be sent to the service provider after authentication, without actually binding.")
 	cmd.Flags().StringVar(&b.KonnectorImageOverride, "konnector-image", b.KonnectorImageOverride, "The konnector image to use")
 	cmd.Flags().BoolVarP(&b.Unattended, "unattended", "u", b.Unattended, "If true, use automations to replace a human's interactive authentication and resouce selection.")
+	cmd.Flags().StringVar(&b.Resource, "resource", b.Resource, "The resource (e.g., 'mangodbs') to be selected during the automated resource selection, if 'unattended' is true.")
 }
 
 // Complete ensures all fields are initialized.
@@ -135,11 +138,15 @@ func (b *BindOptions) Validate() error {
 		return fmt.Errorf("invalid url %q: %w", b.URL, err)
 	}
 
+	if b.Unattended && b.Resource == "" {
+		return errors.New("resource must be specified if 'unattended' is true")
+	}
+
 	return b.Options.Validate()
 }
 
 // Run starts the binding process.
-func (b *BindOptions) Run(ctx context.Context, urlCh chan<- string) error {
+func (b *BindOptions) Run(ctx context.Context, urlCh chan string) error {
 	config, err := b.ClientConfig.ClientConfig()
 	if err != nil {
 		return err
@@ -186,6 +193,9 @@ func (b *BindOptions) Run(ctx context.Context, urlCh chan<- string) error {
 		return err
 	}
 
+	if b.Unattended {
+		go SimulateBrowser(urlCh, b.Resource)
+	}
 	sessionID := SessionID()
 	if err := b.authenticate(provider, auth.Endpoint(), sessionID, ClusterID(ns), urlCh); err != nil {
 		return err

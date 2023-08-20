@@ -34,7 +34,7 @@ import (
 	bindplugin "github.com/kube-bind/kube-bind/pkg/kubectl/bind/plugin"
 )
 
-func Bind(t *testing.T, iostreams genericclioptions.IOStreams, authURLCh chan<- string, invocations chan<- SubCommandInvocation, positionalArg string, flags ...string) {
+func Bind(t *testing.T, iostreams genericclioptions.IOStreams, authURLCh chan string, invocations chan<- SubCommandInvocation, positionalArg string, flags ...string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
