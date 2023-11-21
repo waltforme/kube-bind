@@ -155,7 +155,17 @@ func (r *reconciler) reconcile(ctx context.Context, obj *unstructured.Unstructur
 		logger.Error(err, "failed to get upstream spec")
 		return nil
 	}
-	if reflect.DeepEqual(downstreamSpec, upstreamSpec) {
+	downstreamLabels, foundDownstreamLabels, err := unstructured.NestedFieldNoCopy(obj.Object, "metadata", "labels")
+	if err != nil {
+		logger.Error(err, "failed to get downstream labels")
+		return nil
+	}
+	upstreamLabels, _, err := unstructured.NestedFieldNoCopy(upstream.Object, "metadata", "labels")
+	if err != nil {
+		logger.Error(err, "failed to get upstream labels")
+		return nil
+	}
+	if reflect.DeepEqual(downstreamSpec, upstreamSpec) && reflect.DeepEqual(downstreamLabels, upstreamLabels) {
 		return nil // nothing to do
 	}
 
@@ -168,6 +178,16 @@ func (r *reconciler) reconcile(ctx context.Context, obj *unstructured.Unstructur
 				return nil // nothing we can do
 			}
 			logger.Error(err, "failed to set spec", "spec", string(bs))
+			return nil // nothing we can do
+		}
+	} else if foundDownstreamLabels {
+		if err := unstructured.SetNestedField(upstream.Object, downstreamLabels, "metadata", "labels"); err != nil {
+			bs, err := json.Marshal(downstreamLabels)
+			if err != nil {
+				logger.Error(err, "failed to marshal downstream labels", "labels", fmt.Sprintf("%s", downstreamLabels))
+				return nil // nothing we can do
+			}
+			logger.Error(err, "failed to set labels", "labels", string(bs))
 			return nil // nothing we can do
 		}
 	} else {
