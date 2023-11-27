@@ -180,7 +180,10 @@ func (r *reconciler) reconcile(ctx context.Context, obj *unstructured.Unstructur
 			logger.Error(err, "failed to set spec", "spec", string(bs))
 			return nil // nothing we can do
 		}
-	} else if foundDownstreamLabels {
+	} else {
+		unstructured.RemoveNestedField(upstream.Object, "spec")
+	}
+	if foundDownstreamLabels {
 		if err := unstructured.SetNestedField(upstream.Object, downstreamLabels, "metadata", "labels"); err != nil {
 			bs, err := json.Marshal(downstreamLabels)
 			if err != nil {
@@ -191,7 +194,7 @@ func (r *reconciler) reconcile(ctx context.Context, obj *unstructured.Unstructur
 			return nil // nothing we can do
 		}
 	} else {
-		unstructured.RemoveNestedField(upstream.Object, "spec")
+		unstructured.RemoveNestedField(upstream.Object, "metadata", "labels")
 	}
 
 	logger.Info("Updating upstream object")
